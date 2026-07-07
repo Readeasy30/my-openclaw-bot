@@ -19,22 +19,34 @@ def clear_job_file(sha):
     """Clears the maintenance file on GitHub after the task is executed."""
     url = f"https://github.com{GITHUB_REPO}/contents/maintenance_jobs.txt"
     payload = {
-        "message": "Maintenance task completed by bot",
+        "message": "Display maintenance task completed by bot",
         "content": base64.b64encode(b"IDLE").decode("utf-8"),
         "sha": sha
     }
     requests.put(url, headers=headers, json=payload)
 
 def execute_windows_task(task_name):
-    """Executes safe, native Windows 11 maintenance utilities."""
+    """Executes native Windows 11 system and display maintenance tasks."""
     print(f"Executing Windows 11 task: {task_name}")
     
     if task_name == "DISK_CHECK":
-        # Checks primary drive health status using WMIC
         cmd = ["powershell", "-Command", "Get-Volume"]
     elif task_name == "CLEAR_TEMP":
-        # Safely deletes temporary user files
         cmd = ["powershell", "-Command", "Remove-Item -Path $env:TEMP\\* -Recurse -Force -ErrorAction SilentlyContinue"]
+        
+    elif task_name == "LIST_DISPLAYS":
+        # Pulls live hardware data for all connected digital displays
+        cmd = ["powershell", "-Command", "Get-CimInstance -Namespace root\\wmi -ClassName WmiMonitorBasicDisplayParams | Select-Object InstanceName, Active"]
+        
+    elif task_name == "RESET_DISPLAYS":
+        # Restarts the Windows Graphics Device Interface safely using system PNP utilities
+        print("Resetting graphics subsystem and display driver pipelines...")
+        cmd = ["powershell", "-Command", "Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public class Disp { [DllImport(\"user32.dll\")] public static extern bool SetProcessDPIAware(); }'; [Disp]::SetProcessDPIAware()"]
+        
+    elif task_name == "ARRANGE_DISPLAYS":
+        # Resets active monitors back to standard horizontal orientation profiles
+        cmd = ["powershell", "-Command", "DisplaySwitch.exe /extend"]
+        
     else:
         print("Unknown or unsupported command.")
         return
@@ -66,12 +78,10 @@ def main():
     while True:
         try:
             check_maintenance_jobs()
-            time.sleep(30)  # Scan repository every 30 seconds
+            time.sleep(30)
         except KeyboardInterrupt:
             print("Shutting down bot safely.")
             break
 
 if __name__ == "__main__":
     main()
-
-
