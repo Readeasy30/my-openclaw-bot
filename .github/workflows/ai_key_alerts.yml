@@ -1,1 +1,44 @@
+name: AI Stack Exception Alert System
+
+on:
+  push:
+    paths:
+      - 'maintenance_log.txt'
+
+permissions:
+  issues: write
+
+jobs:
+  check_alerts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Parse Telemetry Logs for Key Alerts
+        id: parse_logs
+        run: |
+          if grep -q "\[ALERT\]" maintenance_log.txt; then
+            echo "alert_found=true" >> $GITHUB_OUTPUT
+            # Extract only the alert lines to place in the issue body
+            grep "\[ALERT\]" maintenance_log.txt > alert_summary.txt
+          else
+            echo "alert_found=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Open Tracking Issue for Missing API Keys
+        if: steps.parse_logs.outputs.alert_found == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const alertDetails = fs.readFileSync('alert_summary.txt', 'utf8');
+            
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '⚠️ CRITICAL: Missing or Blocked AI Development Environment Keys',
+              body: `### System Telemetry Alert Exception\n\nYour local Windows 11 host reported an environment failure regarding your development keys:\n\n\`\`\`text\n${alertDetails}\n\`\`\`\n\nPlease check your system environment configurations immediately to resume optimal operation.`,
+              labels: ['bug', 'critical']
+            });
 
