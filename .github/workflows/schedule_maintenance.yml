@@ -1,25 +1,4 @@
-name: Scheduled Windows 11 Maintenance
-
-on:
-  schedule:
-    # Runs automatically every day at midnight UTC
-    - cron: '0 0 * * *'
-  workflow_dispatch: # Allows you to trigger this instantly via a button on GitHub
-
-jobs:
-  queue_task:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Queue System Diagnostics
-        run: |
-          echo "SYSTEM_ALERTS" > maintenance_jobs.txt
-
-      - name: Commit and Push update
-        run: |
-          git config --global user.name "github-actions[bot]"
+me "github-actions[bot]"
           git config --global user.email "github-actions[bot]@://github.com"
           git add maintenance_jobs.txt
           git commit -m "Automated schedule: Trigger system metrics evaluation"
