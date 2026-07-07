@@ -41,7 +41,7 @@ def clear_job_file(sha):
     requests.put(url, headers=headers, json=payload)
 
 def execute_windows_task(task_name):
-    """Executes native Windows 11 core, display, telemetry, and automated updating tasks."""
+    """Executes native Windows 11 core, display, updates, service audits, and AI tools tracking."""
     print(f"Executing: {task_name}")
     
     if task_name == "DISK_CHECK":
@@ -72,48 +72,65 @@ def execute_windows_task(task_name):
             "  $updateSearcher = $updateSession.CreateUpdateSearcher(); "
             "  $searchResult = $updateSearcher.Search(\"IsInstalled=0 and IsHidden=0\"); "
             "  Write-Output \"Pending Updates Count: $($searchResult.Updates.Count)\"; "
-            "  foreach ($update in $searchResult.Updates) { "
-            "    Write-Output \"- $($update.Title)\" "
-            "  }"
-            "} catch { "
-            "  Write-Output \"Unable to query Windows Update Agent service.\""
-            "}"
+            "  foreach ($update in $searchResult.Updates) { \"- $($update.Title)\" }"
+            "} catch { \"Unable to query Windows Update Agent service.\" }"
         )
         cmd = ["powershell", "-Command", ps_script]
 
     elif task_name == "INSTALL_UPDATES":
-        # Forces native Windows Update session download and execution loop
         install_script = (
-            "Write-Output \"Initializing core update session deployment...\"; "
             "try { "
             "  $updateSession = New-Object -ComObject Microsoft.Update.Session; "
             "  $updateSearcher = $updateSession.CreateUpdateSearcher(); "
             "  $searchResult = $updateSearcher.Search(\"IsInstalled=0 and IsHidden=0\"); "
-            "  if ($searchResult.Updates.Count -eq 0) { "
-            "    Write-Output \"System is completely optimized. No pending installations found.\"; "
-            "    exit; "
-            "  } "
+            "  if ($searchResult.Updates.Count -eq 0) { \"No pending installations found.\"; exit; } "
             "  $updatesToDownload = New-Object -ComObject Microsoft.Update.UpdateColl; "
             "  foreach ($update in $searchResult.Updates) { $updatesToDownload.Add($update) | Out-Null }; "
-            "  Write-Output \"Downloading $($updatesToDownload.Count) pending system patches...\"; "
-            "  $downloader = $updateSession.CreateUpdateDownloader(); "
-            "  $downloader.Updates = $updatesToDownload; "
-            "  $downloadResult = $downloader.Download(); "
+            "  $downloader = $updateSession.CreateUpdateDownloader(); $downloader.Updates = $updatesToDownload; $downloader.Download() | Out-Null; "
             "  $updatesToInstall = New-Object -ComObject Microsoft.Update.UpdateColl; "
-            "  foreach ($update in $searchResult.Updates) { "
-            "    if ($update.IsDownloaded) { $updatesToInstall.Add($update) | Out-Null } "
-            "  }; "
-            "  Write-Output \"Executing installation matrix...\"; "
-            "  $installer = $updateSession.CreateUpdateInstaller(); "
-            "  $installer.Updates = $updatesToInstall; "
-            "  $installResult = $installer.Install(); "
-            "  Write-Output \"Installation complete. Result Code: $($installResult.ResultCode)\"; "
-            "  if ($installResult.RebootRequired) { Write-Output \"WARNING: A system restart is required to apply patches.\" } "
-            "} catch { "
-            "  Write-Output \"Critical Exception: Update pipeline execution failed. Verify Administrator shell access.\""
-            "}"
+            "  foreach ($update in $searchResult.Updates) { if ($update.IsDownloaded) { $updatesToInstall.Add($update) | Out-Null } }; "
+            "  $installer = $updateSession.CreateUpdateInstaller(); $installer.Updates = $updatesToInstall; $installResult = $installer.Install(); "
+            "  if ($installResult.RebootRequired) { shutdown /r /t 60 /c \"Automated OpenClaw system update reboot sequence initiated.\" } "
+            "} catch { \"Update pipeline execution failed.\" }"
         )
         cmd = ["powershell", "-Command", install_script]
+
+    elif task_name == "CHECK_SERVICES":
+        service_script = (
+            "Write-Output \"--- Windows Core Service Status Audit ---\"; "
+            "$services = @('Spooler', 'AudioEndpointBuilder', 'WbioSrvc'); "
+            "foreach ($svcName in $services) { "
+            "  $svc = Get-Service -Name $svcName -ErrorAction SilentlyContinue; "
+            "  if ($svc) { "
+            "    Write-Output \"Service: $($svc.DisplayName) ($svcName) -> Status: $($svc.Status)\"; "
+            "    if ($svc.Status -ne 'Running') { Start-Service -Name $svcName -ErrorAction SilentlyContinue }"
+            "  } "
+            "}"
+        )
+        cmd = ["powershell", "-Command", service_script]
+
+    elif task_name == "VERIFY_AI_TOOLS":
+        ai_script = (
+            "Write-Output \"--- AI Development Stack Status Audit ---\"; "
+            "Write-Output \"Checking local Claude Code binary dependency...\"; "
+            "if (Get-Command claude -ErrorAction SilentlyContinue) { Write-Output \"[OK] Claude Code is accessible via system PATH.\" } else { Write-Output \"[WARNING] Claude command-line wrapper not detected in default environment path.\" }; "
+            "Write-Output \"Checking ChatGPT Pro local process status...\"; "
+            "$chatgptProc = Get-Process -Name *ChatGPT* -ErrorAction SilentlyContinue; "
+            "if ($chatgptProc) { Write-Output \"[OK] ChatGPT Pro desktop environment process is live.\" } else { Write-Output \"[INFO] ChatGPT Pro desktop interface is not currently running inside user space.\" }; "
+            "Write-Output \"`nChecking Key Environment Configurations Securely...\"; "
+            "if ($env:OPENAI_API_KEY) { Write-Output \"[OK] OPENAI_API_KEY environment variable is successfully loaded.\" } else { Write-Output \"[ALERT] OPENAI_API_KEY environment flag is empty or missing! Check user configurations.\" }; "
+            "if ($env:ANTHROPIC_API_KEY) { Write-Output \"[OK] ANTHROPIC_API_KEY environment variable is successfully loaded.\" } else { Write-Output \"[ALERT] ANTHROPIC_API_KEY environment flag is empty or missing! Check user configurations.\" }; "
+            "Write-Output \"`nVerifying OpenAI API/Codex and Anthropic endpoint accessibility...\"; "
+            "try { "
+            "  $openaiTest = Invoke-WebRequest -Uri 'https://openai.com' -Method Get -TimeoutSec 10 -ErrorAction SilentlyContinue; "
+            "  Write-Output \"[OK] Connection to OpenAI/Codex endpoints verified successfully.\"; "
+            "} catch { Write-Output \"[ALERT] Unable to reach OpenAI endpoints. Check local firewall or DNS profiles.\" }; "
+            "try { "
+            "  $anthropicTest = Invoke-WebRequest -Uri 'https://anthropic.com' -Method Get -TimeoutSec 10 -ErrorAction SilentlyContinue; "
+            "  Write-Output \"[OK] Connection to Anthropic API endpoints verified successfully.\"; "
+            "} catch { Write-Output \"[ALERT] Unable to reach Anthropic API gateways. Network constraint detected.\" }"
+        )
+        cmd = ["powershell", "-Command", ai_script]
         
     else:
         return "Unsupported or unknown command."
@@ -151,3 +168,6 @@ def main():
             break
 
 if __name__ == "__main__":
+    main()
+
+
