@@ -41,7 +41,7 @@ def clear_job_file(sha):
     requests.put(url, headers=headers, json=payload)
 
 def execute_windows_task(task_name):
-    """Executes native Windows 11 core, display, telemetry, and update status tasks."""
+    """Executes native Windows 11 core, display, telemetry, and automated updating tasks."""
     print(f"Executing: {task_name}")
     
     if task_name == "DISK_CHECK":
@@ -56,7 +56,6 @@ def execute_windows_task(task_name):
         cmd = ["powershell", "-Command", "DisplaySwitch.exe /extend; Echo 'Displays set to extend'"]
         
     elif task_name == "SYSTEM_ALERTS":
-        # Fetches CPU load, Total free RAM, storage health margins, and critical Windows Update gaps simultaneously
         ps_script = (
             "$cpu = (Get-CimInstance Win32_Processor).LoadPercentage; "
             "$os = Get-CimInstance Win32_OperatingSystem; "
@@ -81,6 +80,41 @@ def execute_windows_task(task_name):
             "}"
         )
         cmd = ["powershell", "-Command", ps_script]
+
+    elif task_name == "INSTALL_UPDATES":
+        # Forces native Windows Update session download and execution loop
+        install_script = (
+            "Write-Output \"Initializing core update session deployment...\"; "
+            "try { "
+            "  $updateSession = New-Object -ComObject Microsoft.Update.Session; "
+            "  $updateSearcher = $updateSession.CreateUpdateSearcher(); "
+            "  $searchResult = $updateSearcher.Search(\"IsInstalled=0 and IsHidden=0\"); "
+            "  if ($searchResult.Updates.Count -eq 0) { "
+            "    Write-Output \"System is completely optimized. No pending installations found.\"; "
+            "    exit; "
+            "  } "
+            "  $updatesToDownload = New-Object -ComObject Microsoft.Update.UpdateColl; "
+            "  foreach ($update in $searchResult.Updates) { $updatesToDownload.Add($update) | Out-Null }; "
+            "  Write-Output \"Downloading $($updatesToDownload.Count) pending system patches...\"; "
+            "  $downloader = $updateSession.CreateUpdateDownloader(); "
+            "  $downloader.Updates = $updatesToDownload; "
+            "  $downloadResult = $downloader.Download(); "
+            "  $updatesToInstall = New-Object -ComObject Microsoft.Update.UpdateColl; "
+            "  foreach ($update in $searchResult.Updates) { "
+            "    if ($update.IsDownloaded) { $updatesToInstall.Add($update) | Out-Null } "
+            "  }; "
+            "  Write-Output \"Executing installation matrix...\"; "
+            "  $installer = $updateSession.CreateUpdateInstaller(); "
+            "  $installer.Updates = $updatesToInstall; "
+            "  $installResult = $installer.Install(); "
+            "  Write-Output \"Installation complete. Result Code: $($installResult.ResultCode)\"; "
+            "  if ($installResult.RebootRequired) { Write-Output \"WARNING: A system restart is required to apply patches.\" } "
+            "} catch { "
+            "  Write-Output \"Critical Exception: Update pipeline execution failed. Verify Administrator shell access.\""
+            "}"
+        )
+        cmd = ["powershell", "-Command", install_script]
+        
     else:
         return "Unsupported or unknown command."
 
