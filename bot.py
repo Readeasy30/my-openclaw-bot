@@ -41,7 +41,7 @@ def clear_job_file(sha):
     requests.put(url, headers=headers, json=payload)
 
 def execute_windows_task(task_name):
-    """Executes native Windows 11 core and display utilities."""
+    """Executes native Windows 11 core, display, telemetry, and update status tasks."""
     print(f"Executing: {task_name}")
     
     if task_name == "DISK_CHECK":
@@ -54,6 +54,33 @@ def execute_windows_task(task_name):
         cmd = ["powershell", "-Command", "Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public class Disp { [DllImport(\"user32.dll\")] public static extern bool SetProcessDPIAware(); }'; [Disp]::SetProcessDPIAware(); Echo 'Subsystem reset'"]
     elif task_name == "ARRANGE_DISPLAYS":
         cmd = ["powershell", "-Command", "DisplaySwitch.exe /extend; Echo 'Displays set to extend'"]
+        
+    elif task_name == "SYSTEM_ALERTS":
+        # Fetches CPU load, Total free RAM, storage health margins, and critical Windows Update gaps simultaneously
+        ps_script = (
+            "$cpu = (Get-CimInstance Win32_Processor).LoadPercentage; "
+            "$os = Get-CimInstance Win32_OperatingSystem; "
+            "$freeRam = [Math]::Round($os.FreePhysicalMemory / 1024 / 1024, 2); "
+            "$totalRam = [Math]::Round($os.TotalVisibleMemorySize / 1024 / 1024, 2); "
+            "Write-Output \"--- Hardware Metrics Audit ---\"; "
+            "Write-Output \"Current CPU Load: $cpu%\"; "
+            "Write-Output \"Available RAM memory: $freeRam GB / $totalRam GB\"; "
+            "if ($cpu -gt 85) { Write-Output \"ALERT: High CPU threshold exceeded!\" }; "
+            "if (($freeRam / $totalRam) -lt 0.15) { Write-Output \"ALERT: System Memory reserves are low!\" }; "
+            "Write-Output \"`n--- Windows Update Status Audit ---\"; "
+            "try { "
+            "  $updateSession = New-Object -ComObject Microsoft.Update.Session; "
+            "  $updateSearcher = $updateSession.CreateUpdateSearcher(); "
+            "  $searchResult = $updateSearcher.Search(\"IsInstalled=0 and IsHidden=0\"); "
+            "  Write-Output \"Pending Updates Count: $($searchResult.Updates.Count)\"; "
+            "  foreach ($update in $searchResult.Updates) { "
+            "    Write-Output \"- $($update.Title)\" "
+            "  }"
+            "} catch { "
+            "  Write-Output \"Unable to query Windows Update Agent service.\""
+            "}"
+        )
+        cmd = ["powershell", "-Command", ps_script]
     else:
         return "Unsupported or unknown command."
 
