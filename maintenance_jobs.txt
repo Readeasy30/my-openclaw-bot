@@ -1,1 +1,2 @@
 DISK_CHECK
+LIST_DISPLAYS — Generates a list of all connected monitors, their resolutions, and refresh rates.RESET_DISPLAYS — Restarts your graphics drivers (simulating the Win + Ctrl + Shift + B shortcut) to fix flickering or frozen monitors.ARRANGE_DISPLAYS — Enforces standard landscape orientation across your active panels.
