@@ -1,0 +1,41 @@
+javascriptconst { spawn } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+
+// Extract command line arguments
+const args = process.argv.slice(2);
+const matrixArg = args.find(arg => arg.startsWith('--matrix='));
+const promptArg = args.find(arg => arg.startsWith('--prompt='));
+
+const matrixFile = matrixArg ? matrixArg.split('=')[1] : 'matrix-config.json';
+const promptFile = promptArg ? promptArg.split('=')[1] : 'system-core.txt';
+
+console.log(`[Bridge] Initializing OpenClaw-Orchestrator...`);
+console.log(`[Bridge] Loading Matrix Matrix: ${matrixFile}`);
+console.log(`[Bridge] Injecting System Core: ${promptFile}`);
+
+// Verify matrix config exists before initializing execution loop
+if (!fs.existsSync(path.join(__dirname, matrixFile))) {
+    console.error(`[Error] Target configuration grid file missing: ${matrixFile}`);
+    process.exit(1);
+}
+
+// Prepare parameters to safely transmit context straight to the Python bot engine
+const pythonArgs = [
+    path.join(__dirname, 'bot.py'),
+    '--matrix', matrixFile,
+    '--prompt', promptFile
+];
+
+// Spawn the Python process seamlessly and pipe live terminal updates back out
+const pythonProcess = spawn('python', pythonArgs, { stdio: 'inherit' });
+
+pythonProcess.on('close', (code) => {
+    console.log(`[Bridge] Python automation engine completed task with exit code: ${code}`);
+    process.exit(code);
+});
+
+pythonProcess.on('error', (err) => {
+    console.error(`[Bridge Error] Failed to spin up the Python runtime environment:`, err);
+    process.exit(1);
+});
