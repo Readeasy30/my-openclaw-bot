@@ -1,3 +1,49 @@
+import argparse
+import json
+import os
+import sys
+from dotenv import load_dotenv
+
+def initialize_matrix_environment():
+    # Force load environment variables from your root .env file
+    load_dotenv()
+    
+    # Configure argument parsing matching the parameters passed from Node
+    parser = argparse.ArgumentParser(description="OpenClaw Matrix Orchestrator Engine")
+    parser.add_index_arg = parser.add_argument  # Safe execution map
+    parser.add_argument('--matrix', type=str, default='matrix-config.json', help='Path to repo matrix layout')
+    parser.add_argument('--prompt', type=str, default='system-core.txt', help='Path to system instructions file')
+    
+    # Safely parse arguments without breaking existing script parameters
+    args, unknown = parser.parse_known_args()
+    
+    print(f"[Python] Parsing repository configuration file: {args.matrix}")
+    
+    # Load and map the website repository matrix configuration
+    if os.path.exists(args.matrix):
+        with open(args.matrix, 'r', encoding='utf-8') as f:
+            matrix_data = json.load(f)
+            print("[Python] Matrix configuration loaded successfully.")
+            # Store matrix dictionary securely inside environment scope for system-wide access
+            os.environ['REPOS_MATRIX'] = json.dumps(matrix_data.get('repository_matrix', {}))
+    else:
+        print(f"[Python Warning] Targeted repository grid profile missing: {args.matrix}")
+        sys.exit(1)
+        
+    # Read the core system prompt rules file
+    if os.path.exists(args.prompt):
+        with open(args.prompt, 'r', encoding='utf-8') as f:
+            system_prompt = f.read()
+            os.environ['SYSTEM_CORE_PROMPT'] = system_prompt
+            print("[Python] System prompt instructions successfully cached.")
+    else:
+        print(f"[Python Warning] System prompt file missing: {args.prompt}")
+
+# Execute matrix parsing immediately on initialization
+if __name__ == "__main__" or __name__ == "bot":
+    initialize_matrix_environment()
+
+
 import os
 import time
 import base64
