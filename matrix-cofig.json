@@ -1,0 +1,11 @@
+json{
+  "bot_name": "OpenClaw-Orchestrator",
+  "allowed_scopes": ["read", "write", "content", "secrets"],
+  "provider_fallback": "openrouter",
+  "repository_matrix": {
+    "education": ["readeasy30.com", "matheasy30.com", "bubbles-ai-guide"],
+    "commercial_agency": ["topshelfwebsites", "webmasters", "my-ozarkwebmasters", "-local-business-template"],
+    "engines_and_apps": ["restaurantaibot.com", "restaurant-seo-engine", "spx-tastytrade-autotrader", "business-os", "saas-os", "llm-chat-app-template"],
+    "utilities_and_meta": ["control-room", "privacy", "claude.md", "refined-github-", "chanfana-openapi-template", "ladyfolks"]
+  }
+}
