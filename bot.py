@@ -2,6 +2,42 @@ import os
 import sys
 import json
 from dotenv import load_dotenv
+import requests
+
+def verify_openrouter_credits():
+    """Automated test ping block to instantly alert if free credits are exhausted."""
+    print("[Pipeline] Executing live credit ping check...")
+    api_key = os.getenv('OPENROUTER_API_KEY')
+    
+    if not api_key or "your_actual" in api_key:
+        print("[Alert] OPENROUTER_API_KEY is missing or unconfigured in .env file.")
+        return False
+        
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    
+    try:
+        # Ping the official openrouter limits endpoint to check keys safely
+        response = requests.get("https://openrouter.ai", headers=headers, timeout=5)
+        if response.status_code == 200:
+            data = response.json().get('data', {})
+            limit = data.get('limit', 0)
+            usage = data.get('usage', 0)
+            remaining = max(0, limit - usage) if limit else "Unlimited"
+            
+            print(f"[Success] API Authentication Valid. Remaining Key Balance: {remaining}")
+            return True
+        elif response.status_code == 401:
+            print("[CRITICAL ALERT] OpenRouter API key is invalid or unauthorized! Check .env file.")
+            return False
+        else:
+            print(f"[Alert] Credit check returned unexpected status code: {response.status_code}")
+            return True
+    except Exception as e:
+        print(f"[Pipeline Warning] Credit ping check timed out or failed to connect: {e}")
+        return True
 
 def run_orchestrator():
     # 1. Clear terminal screen for a clean, unified view
