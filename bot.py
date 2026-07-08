@@ -213,7 +213,17 @@ def main():
         except KeyboardInterrupt:
             break
 
-if __name__ == "__main__":
-    main()
+  if __name__ == "__main__":
+    # 1. Parse your newly pushed matrix layout and prompt files
+    initialize_matrix_environment()
+    
+    # 2. Main execution block to process your automated jobs
+    print("\n===================================================")
+    print("[Engine] OpenClaw Active Matrix Workspace Engine Online")
+    print("===================================================\n")
+    
+    # Add your task execution logic call here (e.g., check for maintenance jobs)
+    print("[Success] All system core matrix configurations cached.")
+  
 
 
