@@ -1,44 +1,53 @@
 name: AI Stack Exception Alert System
 
+# Trigger workflow on pushes and pull requests to main branches
 on:
   push:
-    paths:
-      - 'maintenance_log.txt'
-
-permissions:
-  issues: write
+    branches: [ main, master ]
+    paths-ignore:
+      - 'README.md'
+      - '.gitignore'
+  pull_request:
+    branches: [ main, master ]
+  schedule:
+    # Run a routine maintenance check daily at midnight
+    - cron: '0 0 * * *'
 
 jobs:
-  check_alerts:
+  verify-and-alert:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+    # Step 1: Check out the repository code
+    - name: Checkout Code
+      uses: actions/checkout@v4
 
-      - name: Parse Telemetry Logs for Key Alerts
-        id: parse_logs
-        run: |
-          if grep -q "\[ALERT\]" maintenance_log.txt; then
-            echo "alert_found=true" >> $GITHUB_OUTPUT
-            # Extract only the alert lines to place in the issue body
-            grep "\[ALERT\]" maintenance_log.txt > alert_summary.txt
-          else
-            echo "alert_found=false" >> $GITHUB_OUTPUT
-          fi
+    # Step 2: Set up Python environment
+    - name: Set up Python
+      uses: actions/checkout@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
 
-      - name: Open Tracking Issue for Missing API Keys
-        if: steps.parse_logs.outputs.alert_found == 'true'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const alertDetails = fs.readFileSync('alert_summary.txt', 'utf8');
-            
-            await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: '⚠️ CRITICAL: Missing or Blocked AI Development Environment Keys',
-              body: `### System Telemetry Alert Exception\n\nYour local Windows 11 host reported an environment failure regarding your development keys:\n\n\`\`\`text\n${alertDetails}\n\`\`\`\n\nPlease check your system environment configurations immediately to resume optimal operation.`,
-              labels: ['bug', 'critical']
-            });
+    # Step 3: Install dependencies
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
+    # Step 4: Run test suite or diagnostics script
+    - name: Run AI Stack Core Verification
+      env:
+        # Pass the repository token securely into the runtime
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # Recommended: Add your OpenRouter key to GitHub Repository Secrets
+        OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      run: |
+        python bot.py --verify-stack
+
+    # Step 5: Trigger alert if the previous step fails
+    - name: Send Alert on Failure
+      if: failure()
+      run: |
+        echo "::error title=AI Stack Failure::The core executor or OpenRouter verification failed!"
+        # Add curl webhooks for Discord/Slack channels here if needed
